@@ -1,0 +1,51 @@
+1	被	_	LB	LB	_	19	adv	_	2.0000
+2	1987	_	CD	CD	_	3	att	_	0.9999
+3	年	_	M	M	_	5	att	_	2.0000
+4	6	_	CD	CD	_	5	att	_	0.9520
+5	月	_	NN	NN	_	7	att	_	2.0000
+6	25	_	CD	CD	_	7	att	_	0.9873
+7	日	_	M	M	_	9	adv	_	2.0000
+8	国务院	_	NN	NN	_	9	subj	_	1.0000
+9	发布	_	VV	VV	_	16	att	_	2.0000
+10	的	_	DEC	DEC	_	9	adjct	_	1.0000
+11	《	_	PU	PU	_	10	punc	_	2.0000
+12	中华人民共和国	_	NR	NR	_	14	att	_	2.0000
+13	建筑	_	NN	NN	_	14	att	_	0.9994
+14	税	_	NN	NN	_	16	att	_	0.6252
+15	暂行	_	JJ	JJ	_	16	att	_	0.9889
+16	条例	_	NN	NN	_	1	pobj	_	2.0000
+17	》	_	PU	PU	_	16	punc	_	2.0000
+18	明令	_	NN	NN	_	19	adv	_	2.0000
+19	废止	_	VV	VV	_	0	root	_	2.0000
+20	。	_	PU	PU	_	19	punc	_	2.0000
+
+1	他	_	PN	PN	_	3	subj	_	2.0000
+2	似乎	_	AD	AD	_	3	adv	_	2.0000
+3	凭	_	P	P	_	0	root	_	2.0000
+4	直觉	_	NN	NN	_	3	obj	_	2.0000
+5	知道	_	VV	VV	_	3	sasubj	_	2.0000
+6	如何	_	AD	AD	_	7	adv	_	2.0000
+7	做	_	VV	VV	_	5	obj	_	2.0000
+8	。	_	PU	PU	_	7	punc	_	2.0000
+
+1	还是	_	AD	AD	_	0	root	_	2.0000
+2	一个	_	DT	DT	_	4	att	_	0.9506
+3	情	_	NN	NN	_	4	att	_	0.9951
+4	字	_	NN	NN	_	1	obj	_	2.0000
+5	,	_	PU	PU	_	4	punc	_	2.0000
+6	李梅	_	NR	NR	_	7	subj	_	2.0000
+7	演	_	VV	VV	_	1	dfsubj	_	2.0000
+8	《	_	PU	PU	_	7	punc	_	2.0000
+9	留下	_	VV	VV	_	7	obj	_	0.9826
+10	真情	_	NN	NN	_	9	obj	_	0.9354
+11	》	_	PU	PU	_	10	punc	_	2.0000
+12	。	_	PU	PU	_	10	punc	_	2.0000
+
+1	他	_	PN	PN	_	5	subj	_	2.0000
+2	从	_	P	P	_	5	adv	_	2.0000
+3	出生	_	NN	NN	_	2	pobj	_	2.0000
+4	就	_	AD	AD	_	5	adv	_	2.0000
+5	失明	_	VV	VV	_	0	root	_	2.0000
+6	了	_	AS	AS	_	5	adjct	_	2.0000
+7	。	_	PU	PU	_	6	punc	_	2.0000
+
