@@ -13,12 +13,11 @@ def get_available_gpu(phys_machs, req_mem):
     # Sort by free memory in descending order.
     gpu_available.sort(key=lambda x: -x[2])
     return iter(gpu_available)
-
-
+3
 def main():
 
     # List your physical machines.
-    phys_machs = ['63', '64']
+    phys_machs = ['64', ]
     # List the memory you needed.
     req_mem = 10000
     gpu_available = get_available_gpu(phys_machs, req_mem)
@@ -33,20 +32,21 @@ def main():
     default_cfg ='../cfgs/default.cfg'
     # List the CMD arguments to explore.
     argu_list = {
-        'MIN_PROB': ['0.4', '0.3', '0.2'],
-        'DOMAIN': ['FIN',],
+        'DOMAIN': ['PB', ],
+        # 'D_MODEL': ['400',],
         # 'LR_DECAY': ['0.8', '0.7'],
         # 'LR_ANNEAL': ['15000',],
         # 'LR_DOUBLE': ['75400',],
         # 'XFMR_ATTN_DROP': ['0.4',],
         # 'XFMR_FFN_DROP': ['0.4',],
         # 'XFMR_RES_DROP': ['0.4',],
-        # 'LR': ['0.002',],
+        'N_WORKER': ['4',],
+        # 'LR': ['0.0012',],
         # 'LR_DECAY': ['0.8',],
         # 'LR_WARM': ['800',],
         # 'LR_DOUBLE': ['20400',],
-        #'N_BATCH': ['2',],
-        #'DEBUG': [''],
+        # 'N_BATCH': ['2',],
+        # 'DEBUG': [''],
     }
     argu_comb = list(itertools.product(*argu_list.values()))
 
@@ -70,3 +70,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+

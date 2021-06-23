@@ -48,7 +48,7 @@ def main():
 
     # Setup neptune mode="debug" run="CCL-9",
     run = neptune.init(project='ushio/CCL2021', name=cfg.exp_name,
-                       tags=['parallel homework', ])
+                       tags=['parallel homework', ], mode='debug')
 
     #                   tags=[cfg.DOMAIN, str(cfg.MIN_PROB), 'SNorm', 'giga100', ], mode='debug')
     run['parameters'] = vars(cfg)
@@ -72,22 +72,39 @@ def main():
         TRAIN, data_reader, vocabulary, counters, {'word': cfg.MIN_COUNT},
         no_pad_namespace={'rel'}, no_unk_namespace={'rel'})
     dev_set  = CoNLLUDataset(DEV,  data_reader, vocabulary)
+    # print(counters['char'])
     # test_set = CoNLLUDataset(TEST, data_reader, vocabulary)
 
     # Build the data-loader
-    train = DataLoader(train_set, cfg.N_BATCH, True,  None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0, prefetch_factor=2)
+    train = DataLoader(train_set, cfg.N_BATCH, True,  None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
     dev   = DataLoader(dev_set,   cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
     # test  = DataLoader(test_set,  cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
     train_ = DataLoader(train_set, cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
 
     # Build parser model
-    parser = Parser(vocabulary, cfg)
-    CELoss = nn.CrossEntropyLoss()
-    if torch.cuda.is_available(): parser = parser.cuda()
+    parser1 = Parser(vocabulary, cfg)
+    parser2 = Parser(vocabulary, cfg)
+    parser3 = Parser(vocabulary, cfg)
 
+    if torch.cuda.is_available():
+        cuda0 = torch.device('cuda:0')
+        cuda1 = torch.device('cuda:1')
+        cuda2 = torch.device('cuda:2')
+        parser1 = parser1.to(cuda0)
+        parser2 = parser2.to(cuda1)
+        parser3 = parser3.to(cuda2)
+
+
+    CELoss = nn.CrossEntropyLoss()
     # build optimizers
-    optim = AdamW(parser.parameters(), cfg.LR, cfg.BETAS, cfg.EPS)
-    sched = ExponentialLRwithWarmUp(
+    optim1 = AdamW(parser.parameters(), cfg.LR, cfg.BETAS, cfg.EPS)
+    sched1 = ExponentialLRwithWarmUp(
+        optim, cfg.LR_DECAY, cfg.LR_ANNEAL, cfg.LR_DOUBLE, cfg.LR_WARM)
+    optim2 = AdamW(parser.parameters(), cfg.LR, cfg.BETAS, cfg.EPS)
+    sched2 = ExponentialLRwithWarmUp(
+        optim, cfg.LR_DECAY, cfg.LR_ANNEAL, cfg.LR_DOUBLE, cfg.LR_WARM)
+    optim3 = AdamW(parser.parameters(), cfg.LR, cfg.BETAS, cfg.EPS)
+    sched3 = ExponentialLRwithWarmUp(
         optim, cfg.LR_DECAY, cfg.LR_ANNEAL, cfg.LR_DOUBLE, cfg.LR_WARM)
 
     # load checkpoint if wanted
@@ -96,16 +113,22 @@ def main():
         ckpt = torch.load(ckpt_path)
         start_epoch = ckpt['epoch']+1
         best_uas, best_las, best_epoch = ckpt['best']
-        parser.load_state_dict(ckpt['parser'])
-        optim.load_state_dict(ckpt['optim'])
-        sched.load_state_dict(ckpt['sched'])
+        parser1.load_state_dict(ckpt['parser1'])
+        optim1.load_state_dict(ckpt['optim1'])
+        sched1.load_state_dict(ckpt['sched1'])
+        parser2.load_state_dict(ckpt['parser2'])
+        optim2.load_state_dict(ckpt['optim2'])
+        sched2.load_state_dict(ckpt['sched2'])
+        parser3.load_state_dict(ckpt['parser3'])
+        optim3.load_state_dict(ckpt['optim3'])
+        sched3.load_state_dict(ckpt['sched3'])
         return start_epoch, best_uas, best_las, best_epoch
 
     if cfg.IS_RESUME:
         start_epoch, best_uas, best_las, best_epoch = load_ckpt(cfg.LAST)
 
     @torch.no_grad()
-    def validation(data_loader: DataLoader, pred_path: str, gold_path: str):
+    def validation(parser, data_loader: DataLoader, pred_path: str, gold_path: str):
         pred = {'arcs': [], 'rels': []}
         arc_losses, rel_losses = [], []
         for data in data_loader:
@@ -123,24 +146,46 @@ def main():
     tot_dataio = 0
     tot_calc = 0
     for epoch in range(start_epoch, cfg.N_EPOCH):
-        parser.train()
+        parser1.train()
+        parser2.train()
+        parser3.train()
         arc_losses, rel_losses = [], []
-        beg = time.perf_counter()
         for n_iter, data in enumerate(train):
             if cfg.N_WORKER:
-                for x in data.keys(): data[x]=data[x].cuda(non_blocking=True)
-            beg2 = time.perf_counter()
-            arc_loss, rel_loss = parser(data)
+                for x in data.keys():
+                    data0[x] = data[x].to(cuda0)
+                    data1[x] = data[x].to(cuda1)
+                    data2[x] = data[x].to(cuda2)
+
+            arc_loss, rel_loss = parser1(data)
+            arc_losses.append(arc_loss.item())
+            rel_losses.append(rel_loss.item())
+            ((arc_loss+rel_loss)/cfg.STEP_UPDATE).backward()
+
+            arc_loss, rel_loss = parser2(data)
+            arc_losses.append(arc_loss.item())
+            rel_losses.append(rel_loss.item())
+            ((arc_loss+rel_loss)/cfg.STEP_UPDATE).backward()
+
+            arc_loss, rel_loss = parser3(data)
             arc_losses.append(arc_loss.item())
             rel_losses.append(rel_loss.item())
             ((arc_loss+rel_loss)/cfg.STEP_UPDATE).backward()
 
             # Actual update
             if n_iter % cfg.STEP_UPDATE == cfg.STEP_UPDATE-1:
-                nn.utils.clip_grad_norm_(parser.parameters(), cfg.CLIP)
-                optim.step()
-                optim.zero_grad()
-                sched.step()
+                nn.utils.clip_grad_norm_(parser1.parameters(), cfg.CLIP)
+                nn.utils.clip_grad_norm_(parser2.parameters(), cfg.CLIP)
+                nn.utils.clip_grad_norm_(parser3.parameters(), cfg.CLIP)
+                optim1.step()
+                optim1.zero_grad()
+                sched1.step()
+                optim2.step()
+                optim2.zero_grad()
+                sched2.step()
+                optim3.step()
+                optim3.zero_grad()
+                sched3.step()
             end2 = time.perf_counter()
             tot_calc += end2 - beg2
         end = time.perf_counter()
@@ -151,21 +196,27 @@ def main():
         torch.save({
             'epoch': epoch,
             'best': (best_uas, best_las, best_epoch),
-            'parser': parser.state_dict(),
-            'optim': optim.state_dict(),
-            'sched': sched.state_dict(),
+            'parser1': parser1.state_dict(),
+            'optim1': optim1.state_dict(),
+            'sched1': sched1.state_dict(),
+            'parser2': parser2.state_dict(),
+            'optim2': optim2.state_dict(),
+            'sched2': sched2.state_dict(),
+            'parser3': parser3.state_dict(),
+            'optim3': optim3.state_dict(),
+            'sched3': sched3.state_dict(),
         }, cfg.LAST)
 
         # validate parer on dev set
-        parser.eval()
-        arc_loss, rel_loss, uas, las = validation(dev, cfg.PRED_DEV, DEV)
+        parser1.eval()
+        arc_loss, rel_loss, uas, las = validation(parser1, dev, cfg.PRED_DEV, DEV)
         if uas > best_uas and las > best_las or uas+las > best_uas+best_las:
             best_uas, best_las, best_epoch = uas, las, epoch
             os.popen(f'cp {cfg.LAST} {cfg.BEST}')
-        run["valid/uas"].log(uas)
-        run["valid/las"].log(las)
-        run["valid/arc_loss"].log(arc_loss)
-        run["valid/rel_loss"].log(rel_loss)
+        run["valid1/uas"].log(uas)
+        run["valid1/las"].log(las)
+        run["valid1/arc_loss"].log(arc_loss)
+        run["valid1/rel_loss"].log(rel_loss)
         logger.info(
             f'|{epoch:5}| Arc({float(np.mean(arc_losses)):.2f}) '
             f'Rel({float(np.mean(rel_losses)):.2f}) Best({best_epoch})')
@@ -173,18 +224,7 @@ def main():
         run["train/train_rel_loss"].log(float(np.mean(rel_losses)))
         logger.info(f'|  Dev| UAS:{uas:6.2f}, LAS:{las:6.2f}, '
                     f'Arc({arc_loss:.2f}), Rel({rel_loss:.2f})')
-        arc_loss, rel_loss, uas, las = validation(train_, cfg.PRED_TRAIN, TRAIN)
-        logger.info(f'|Train| UAS:{uas:6.2f}, LAS:{las:6.2f}, '
-                    f'Arc({arc_loss:.2f}), Rel({rel_loss:.2f})')
-        run["train/arc_loss"].log(arc_loss)
-        run["train/rel_loss"].log(rel_loss)
-        run["train/uas"].log(uas)
-        run["train/las"].log(las)
-        # arc_loss, rel_loss, uas, las = validation(test, cfg.PRED_TEST, TEST)
-        # logger.info(f'| Test| UAS:{uas:6.2f}, LAS:{las:6.2f}, '
-        #             f'Arc({arc_loss:.2f}), Rel({rel_loss:.2f})')
-        # run["test/arc_loss"].log(arc_loss)
-        # run["test/rel_loss"].log(rel_loss)
+
     run["time"] = tot_dataio-tot_calc
     run["tot_time"] = tot_dataio
     logger.info(f'*Best Dev Result* UAS:{best_uas:6.2f}, LAS:{best_las:6.2f}, Epoch({best_epoch})')
@@ -192,15 +232,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-next_batch = data_iter.next() # start loading the first batch
-next_batch = [data.cuda(non_blocking=True) for data in next_batch ]  # with pin_memory=True and non_blocking=True, this will copy data to GPU non blockingly
-
-for i in range(len(loader)):
-    batch = next_batch
-    if i + 2 != len(loader):
-        # start copying data of next batch
-        next_batch = data_iter.next()
-        next_batch = [data.cuda(non_blocking=True) for data in next_batch]
-

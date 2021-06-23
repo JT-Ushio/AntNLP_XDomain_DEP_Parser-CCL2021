@@ -43,11 +43,8 @@ class Parser(nn.Module):
         n_tag = vocabulary.get_vocab_size('tag')
         PAD = vocabulary.get_padding_index('tag')
         self.tlookup = nn.Embedding(n_tag, cfg.D_TAG, padding_idx=PAD)
-        # self.tlookup_rel = nn.Embedding(n_tag, 50, padding_idx=PAD)
-        # self.tlookup_arc = nn.Embedding(n_tag, 50, padding_idx=PAD)
         # Emb. Dropout
         self.emb_drop = IndependentDropout(cfg.EMB_DROP)
-        # self.tag_drop = nn.Dropout(p=cfg.MLP_DROP)
 
         # Encoder Layer
         ## BiLSTM
@@ -82,8 +79,6 @@ class Parser(nn.Module):
         # Embedding Layer
         v_w = self.wlookup(x['w_lookup']) + self.glookup(x['g_lookup'])
         v_t = self.tlookup(x['t_lookup'])
-        # v_t_arc, v_t_rel = self.tlookup_arc(x['t_lookup']), self.tlookup_rel(x['t_lookup'])
-        # v_t_arc, v_t_rel = self.tag_drop(v_t_arc), self.tag_drop(v_t_rel)
         v_w, v_t = self.emb_drop(v_w, v_t)
         v = torch.cat((v_w, v_t), dim=-1)
 
@@ -104,11 +99,6 @@ class Parser(nn.Module):
         h, d = self.mlp_h(v), self.mlp_d(v)
         h_arc, d_arc = h[..., :self.d_arc], d[..., :self.d_arc]
         h_rel, d_rel = h[..., self.d_arc:], d[..., self.d_arc:]
-
-        # h_arc = torch.cat((h_arc, v_t_arc), dim=-1)
-        # d_arc = torch.cat((d_arc, v_t_arc), dim=-1)
-        # h_rel = torch.cat((h_rel, v_t_rel), dim=-1)
-        # d_rel = torch.cat((d_rel, v_t_rel), dim=-1)
 
         # Arc Bi-affine Layer
         s_arc = self.arc_attn(d_arc, h_arc)

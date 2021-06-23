@@ -42,12 +42,13 @@ def conllu_fn(batch):
     PAD, UNK = CoNLLUDataset.PAD, CoNLLUDataset.UNK
     truth = {'head': [], 'rel': []}
     inputs = {'word': [], 'glove': [], 'tag': [], 'prob': []}
-
+    tmp = []
     for ins in batch:
         pad_len = max_len-len(ins['head'])
         pad_seq = [PAD] * pad_len
         # PAD word
         inputs['word'].append(ins['word']['word']+pad_seq)
+        tmp.extend(ins['word']['word'])
         # PAD glove
         glove_idxs = [x for x in ins['word']['glove']]
         inputs['glove'].append(glove_idxs+pad_seq)
@@ -60,6 +61,7 @@ def conllu_fn(batch):
         inputs['prob'].extend(ins['prob'][1:])
         # PAD rel
         truth['rel'].extend(ins['rel']['rel']+pad_seq)
+
     device = torch.device("cuda" if not get_worker_info() and torch.cuda.is_available() else "cpu")
     res = {}
     res['w_lookup'] = torch.tensor(inputs['word'], dtype=torch.long, device=device)

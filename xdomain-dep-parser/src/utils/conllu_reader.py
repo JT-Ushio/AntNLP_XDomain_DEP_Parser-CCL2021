@@ -4,8 +4,13 @@ import re, sys
 from collections import Counter
 from antu.io import Instance, DatasetReader
 from antu.io.fields import Field, TextField, IndexField, FloatField
-from antu.io.token_indexers import TokenIndexer, SingleIdTokenIndexer
+from antu.io.token_indexers import TokenIndexer, SingleIdTokenIndexer, CharTokenIndexer
 
+
+def char_transform(x: str):
+    if x == '**root**':  # indicate root token
+        return ['**root**', ]
+    return ['<B>'] + list(x) + ['<E>']
 
 class PTBReader(DatasetReader):
 
@@ -38,7 +43,8 @@ class PTBReader(DatasetReader):
         indexers = dict()
         # word_indexer = SingleIdTokenIndexer(['word', 'glove'], (lambda x:x.casefold()))
         word_indexer = SingleIdTokenIndexer(['word', 'glove'])
-        indexers['word'] = [word_indexer,]
+        char_indexer = CharTokenIndexer(['char'], char_transform)
+        indexers['word'] = [word_indexer, char_indexer]
         tag_indexer = SingleIdTokenIndexer(['tag'])
         indexers['tag'] = [tag_indexer,]
         rel_indexer = SingleIdTokenIndexer(['rel'])
