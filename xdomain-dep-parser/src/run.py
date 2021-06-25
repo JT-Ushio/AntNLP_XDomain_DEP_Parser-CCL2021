@@ -18,7 +18,7 @@ def get_available_gpu(phys_machs, req_mem):
 def main():
 
     # List your physical machines.
-    phys_machs = ['63', '64']
+    phys_machs = ['63', ]
     # List the memory you needed.
     req_mem = 10000
     gpu_available = get_available_gpu(phys_machs, req_mem)
@@ -33,20 +33,18 @@ def main():
     default_cfg ='../cfgs/default.cfg'
     # List the CMD arguments to explore.
     argu_list = {
-        'MIN_PROB': ['0.4', '0.3', '0.2'],
-        'DOMAIN': ['FIN',],
         # 'LR_DECAY': ['0.8', '0.7'],
         # 'LR_ANNEAL': ['15000',],
         # 'LR_DOUBLE': ['75400',],
-        # 'XFMR_ATTN_DROP': ['0.4',],
-        # 'XFMR_FFN_DROP': ['0.4',],
-        # 'XFMR_RES_DROP': ['0.4',],
-        # 'LR': ['0.002',],
+        'XFMR_ATTN_DROP': ['0.2',],
+        'XFMR_RES_DROP': ['0.2',],
+        'XFMR_FFN_DROP': ['0.2',],
         # 'LR_DECAY': ['0.8',],
         # 'LR_WARM': ['800',],
         # 'LR_DOUBLE': ['20400',],
-        #'N_BATCH': ['2',],
-        #'DEBUG': [''],
+        # 'N_WORKER': [ '3', '4'],
+        'N_EPOCH': ['1501',],
+        # 'DEBUG': [''],
     }
     argu_comb = list(itertools.product(*argu_list.values()))
 

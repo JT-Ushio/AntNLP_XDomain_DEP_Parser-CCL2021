@@ -36,8 +36,7 @@ class PTBReader(DatasetReader):
     def read(self, file_path: str) -> List[Instance]:
         # Build indexers
         indexers = dict()
-        # word_indexer = SingleIdTokenIndexer(['word', 'glove'], (lambda x:x.casefold()))
-        word_indexer = SingleIdTokenIndexer(['word', 'glove'])
+        word_indexer = SingleIdTokenIndexer(['word', 'glove'], (lambda x:x.casefold()))
         indexers['word'] = [word_indexer,]
         tag_indexer = SingleIdTokenIndexer(['tag'])
         indexers['tag'] = [tag_indexer,]

@@ -13,6 +13,7 @@ from module.biaffine import Biaffine
 from module.dropout import IndependentDropout, SharedDropout
 from module.mlp import MLP
 from module.transformer import XformerEncoder, LearnedPositionEncoding
+from utils.mst_decoder import MST_inference
 
 
 class Parser(nn.Module):
@@ -74,6 +75,7 @@ class Parser(nn.Module):
         self.activation = nn.LeakyReLU(negative_slope=0.1)
         # Define CE_loss
         self.CELoss = nn.CrossEntropyLoss()
+        self.softmax = nn.Softmax(dim=-1)
 
 
     def forward(self, x):
@@ -82,8 +84,6 @@ class Parser(nn.Module):
         # Embedding Layer
         v_w = self.wlookup(x['w_lookup']) + self.glookup(x['g_lookup'])
         v_t = self.tlookup(x['t_lookup'])
-        # v_t_arc, v_t_rel = self.tlookup_arc(x['t_lookup']), self.tlookup_rel(x['t_lookup'])
-        # v_t_arc, v_t_rel = self.tag_drop(v_t_arc), self.tag_drop(v_t_rel)
         v_w, v_t = self.emb_drop(v_w, v_t)
         v = torch.cat((v_w, v_t), dim=-1)
 
@@ -105,11 +105,6 @@ class Parser(nn.Module):
         h_arc, d_arc = h[..., :self.d_arc], d[..., :self.d_arc]
         h_rel, d_rel = h[..., self.d_arc:], d[..., self.d_arc:]
 
-        # h_arc = torch.cat((h_arc, v_t_arc), dim=-1)
-        # d_arc = torch.cat((d_arc, v_t_arc), dim=-1)
-        # h_rel = torch.cat((h_rel, v_t_rel), dim=-1)
-        # d_rel = torch.cat((d_rel, v_t_rel), dim=-1)
-
         # Arc Bi-affine Layer
         s_arc = self.arc_attn(d_arc, h_arc)
         s_arc.masked_fill_(~x['mask'].unsqueeze(1), float('-inf'))
@@ -117,7 +112,6 @@ class Parser(nn.Module):
         # mask the ROOT token
         x['mask'][:, 0] = 0
         pred_arc = s_arc[x['mask']]
-
         # Rel Bi-affine Layer
         s_rel = self.rel_attn(d_rel, h_rel).permute(0, 2, 3, 1)
         pred_rel = s_rel[x['mask']]
@@ -136,7 +130,15 @@ class Parser(nn.Module):
         arc_loss = self.CELoss(pred_arc_loss, gold_arc_loss)
         rel_loss = self.CELoss(pred_rel_loss, gold_rel_loss)
         if self.training: return arc_loss, rel_loss
-        pred_arc = pred_arc_.argmax(-1)
+
+        # pred_arc = pred_arc_.argmax(-1)
+        x['mask'][:, 0] = True
+        pred_arc = [MST_inference(p, l, m)[m[1:]] for p, l, m in zip(
+            self.softmax(s_arc).cpu().numpy(),
+            lens.unsqueeze(1).cpu().numpy(),
+            x['mask'].cpu().numpy())]
+        pred_arc = torch.tensor(np.concatenate(pred_arc), dtype=torch.long, device=torch.device("cuda"))
+
         pred_rel = pred_rel_[n_token, pred_arc].argmax(-1)
         return arc_loss, rel_loss, pred_arc.tolist(), pred_rel.tolist()
 

@@ -29,12 +29,8 @@ def ptb_evaluation(
                 pred_line = '\t'.join(ins) + '\n'
                 fout.write(pred_line)
                 i += 1
-    res = os.popen(f'python eval/evaluate.py {gold_path} {pred_path}')
-    res.readline()
-    result = res.readline()
-    UAS = float(result.split()[4][:-1])
-    LAS = float(result.split()[-1][1:])
-    # res = os.popen(f'perl eval/eval.pl -q -g {gold_path} -s {pred_path}')
-    # LAS = float(res.readline().split()[-2])
-    # UAS = float(res.readline().split()[-2])
+
+    res = os.popen(f'perl eval/eval.pl -q -g {gold_path} -s {pred_path}')
+    LAS = float(res.readline().split()[-2])
+    UAS = float(res.readline().split()[-2])
     return UAS, LAS
