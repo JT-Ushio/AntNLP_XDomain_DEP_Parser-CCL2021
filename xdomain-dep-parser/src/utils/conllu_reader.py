@@ -4,7 +4,16 @@ import re, sys
 from collections import Counter
 from antu.io import Instance, DatasetReader
 from antu.io.fields import Field, TextField, IndexField, FloatField
-from antu.io.token_indexers import TokenIndexer, SingleIdTokenIndexer
+from antu.io.token_indexers import TokenIndexer, SingleIdTokenIndexer, CharTokenIndexer
+
+
+def char_transform(x: str):
+    if x == '**root**':  # indicate root token
+        return ['<B>', '**root**', '<E>']
+    res = ['<B>'] + list(x) + ['<E>']
+    if len(res) > 32:  # MAX_CHAR_LENGTH = 30
+        res = res[:16] + res[-16:]
+    return res
 
 
 class PTBReader(DatasetReader):
@@ -23,11 +32,11 @@ class PTBReader(DatasetReader):
                     tokens = [[item,] for item in root_token]
                 else:
                     if token[6] == '-1' and token[7] == 'none':
-                        token[6], token[7], token[9] = '0', '**rrel**', '0'
+                        token[6], token[7], token[9] = '0', '**rrel**', '0.0'
                     try:
-                        token[9] = '0' if float(token[9]) < self.min_prob else '1'
+                        if float(token[9]) > 1.5: token[9] = '1.0'
                     except ValueError:
-                        token[9] = '1'
+                        token[9] = '1.0'
                     for idx, item in enumerate(token):
                         tokens[idx].append(item)
             if len(tokens[0]) > 1: yield tokens
@@ -36,9 +45,9 @@ class PTBReader(DatasetReader):
     def read(self, file_path: str) -> List[Instance]:
         # Build indexers
         indexers = dict()
-        # word_indexer = SingleIdTokenIndexer(['word', 'glove'], (lambda x:x.casefold()))
         word_indexer = SingleIdTokenIndexer(['word', 'glove'])
-        indexers['word'] = [word_indexer,]
+        char_indexer = CharTokenIndexer(['char'], char_transform)
+        indexers['word'] = [word_indexer, char_indexer]
         tag_indexer = SingleIdTokenIndexer(['tag'])
         indexers['tag'] = [tag_indexer,]
         rel_indexer = SingleIdTokenIndexer(['rel'])
@@ -59,11 +68,11 @@ class PTBReader(DatasetReader):
         if 'word' in self.field_list:
             fields.append(TextField('word', inputs[1], indexers['word']))
         if 'tag' in self.field_list:
-            fields.append(TextField('tag', inputs[4], indexers['tag']))
+            fields.append(TextField('tag', inputs[3], indexers['tag']))
         if 'head' in self.field_list:
             fields.append(IndexField('head', inputs[6]))
         if 'rel' in self.field_list:
             fields.append(TextField('rel', inputs[7], indexers['rel']))
         if 'prob' in self.field_list:
-            fields.append(IndexField('prob', inputs[9]))
+            fields.append(FloatField('prob', inputs[9]))
         return Instance(fields)

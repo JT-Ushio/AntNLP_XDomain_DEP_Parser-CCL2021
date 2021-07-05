@@ -13,6 +13,9 @@ from module.biaffine import Biaffine
 from module.dropout import IndependentDropout, SharedDropout
 from module.mlp import MLP
 from module.transformer import XformerEncoder, LearnedPositionEncoding
+from utils.mst_decoder import MST_inference
+from torch.optim import AdamW
+from module.exp_scheduler import ExponentialLRwithWarmUp
 
 
 class Parser(nn.Module):
@@ -39,15 +42,20 @@ class Parser(nn.Module):
         self.wlookup = nn.Embedding(n_word, d_glove, padding_idx=PAD)
         self.wlookup.weight.data.fill_(0)
 
+        # Build char lookup embedding
+        if cfg.D_CHAR:
+            n_char = vocabulary.get_vocab_size('char')
+            PAD = vocabulary.get_padding_index('char')
+            self.clookup = nn.Embedding(n_char, cfg.D_CHAR, padding_idx=PAD)
+            self.charlstm = BiLSTM(cfg.D_CHAR, cfg.D_CHARNN_HID, cfg.N_CHARNN_LAYER, cfg.RNN_DROP)
+            self.charlstm_drop = SharedDropout(cfg.RNN_DROP)
+
         # Build POS tag lookup
         n_tag = vocabulary.get_vocab_size('tag')
         PAD = vocabulary.get_padding_index('tag')
         self.tlookup = nn.Embedding(n_tag, cfg.D_TAG, padding_idx=PAD)
-        # self.tlookup_rel = nn.Embedding(n_tag, 50, padding_idx=PAD)
-        # self.tlookup_arc = nn.Embedding(n_tag, 50, padding_idx=PAD)
         # Emb. Dropout
         self.emb_drop = IndependentDropout(cfg.EMB_DROP)
-        # self.tag_drop = nn.Dropout(p=cfg.MLP_DROP)
 
         # Encoder Layer
         ## BiLSTM
@@ -73,17 +81,40 @@ class Parser(nn.Module):
         self.rel_attn = Biaffine(cfg.D_REL, n_rel, True, True)
         self.activation = nn.LeakyReLU(negative_slope=0.1)
         # Define CE_loss
-        self.CELoss = nn.CrossEntropyLoss()
+        self.CELoss = nn.CrossEntropyLoss(reduction='none')
+        self.softmax = nn.Softmax(dim=-1)
+        self.MIN_PROB = cfg.MIN_PROB
 
+    def set_optimizer(self, cfg):
+        self.optim = AdamW(self.parameters(), cfg.LR, cfg.BETAS, cfg.EPS)
+        self.sched = ExponentialLRwithWarmUp(
+            self.optim, cfg.LR_DECAY, cfg.LR_ANNEAL, cfg.LR_DOUBLE, cfg.LR_WARM)
+        self.CLIP = cfg.CLIP
+
+    def update(self):
+        nn.utils.clip_grad_norm_(self.parameters(), self.CLIP)
+        self.optim.step()
+        self.optim.zero_grad()
+        self.sched.step()
 
     def forward(self, x):
-        max_len, lens = x['w_lookup'].size()[1], x['mask'].sum(dim=1)
+        max_len, lens = x['w_lookup'].size(1), x['mask'].sum(dim=1)
 
         # Embedding Layer
         v_w = self.wlookup(x['w_lookup']) + self.glookup(x['g_lookup'])
         v_t = self.tlookup(x['t_lookup'])
-        # v_t_arc, v_t_rel = self.tlookup_arc(x['t_lookup']), self.tlookup_rel(x['t_lookup'])
-        # v_t_arc, v_t_rel = self.tag_drop(v_t_arc), self.tag_drop(v_t_rel)
+        if hasattr(self, 'charlstm'):
+            char_lens = (x['c_lookup']!=1).sum(dim=1)
+            v_c = self.clookup(x['c_lookup'])
+            v_c = pack_padded_sequence(v_c, char_lens.cpu(), True, False)
+            v_c, _ = self.charlstm(v_c)
+            v_c, _ = pad_packed_sequence(v_c, True, total_length=x['c_lookup'].size(1))
+            v_c = self.charlstm_drop(v_c)
+            beg, end = v_c[:, 0, :], v_c[range(len(char_lens)), char_lens-1, :]
+            v_c = beg + end
+            v_c = torch.cat((torch.zeros_like(v_c[:1, ...]), v_c), dim=0)
+            v_c = v_c[x['w2c'], :]
+            v_t = torch.cat((v_t, v_c), dim=-1)
         v_w, v_t = self.emb_drop(v_w, v_t)
         v = torch.cat((v_w, v_t), dim=-1)
 
@@ -105,11 +136,6 @@ class Parser(nn.Module):
         h_arc, d_arc = h[..., :self.d_arc], d[..., :self.d_arc]
         h_rel, d_rel = h[..., self.d_arc:], d[..., self.d_arc:]
 
-        # h_arc = torch.cat((h_arc, v_t_arc), dim=-1)
-        # d_arc = torch.cat((d_arc, v_t_arc), dim=-1)
-        # h_rel = torch.cat((h_rel, v_t_rel), dim=-1)
-        # d_rel = torch.cat((d_rel, v_t_rel), dim=-1)
-
         # Arc Bi-affine Layer
         s_arc = self.arc_attn(d_arc, h_arc)
         s_arc.masked_fill_(~x['mask'].unsqueeze(1), float('-inf'))
@@ -129,17 +155,26 @@ class Parser(nn.Module):
         n_token = torch.arange(len(gold_arc))
         pred_rel = pred_rel[n_token, gold_arc]
 
-        gold_arc_loss = gold_arc.masked_select(x['prob'])
-        gold_rel_loss = gold_rel.masked_select(x['prob'])
-        pred_rel_loss = pred_rel[x['prob'].nonzero(), :].squeeze()
-        pred_arc_loss = pred_arc[x['prob'].nonzero(), :].squeeze()
+        prob = x['prob']>self.MIN_PROB
+        gold_arc_loss = gold_arc.masked_select(prob)
+        gold_rel_loss = gold_rel.masked_select(prob)
+        pred_rel_loss = pred_rel[prob.nonzero(), :].squeeze()
+        pred_arc_loss = pred_arc[prob.nonzero(), :].squeeze()
+
         arc_loss = self.CELoss(pred_arc_loss, gold_arc_loss)
         rel_loss = self.CELoss(pred_rel_loss, gold_rel_loss)
+        loss_weight = x['prob'][prob]
+        arc_loss = torch.mean(arc_loss * loss_weight)
+        rel_loss = torch.mean(rel_loss * loss_weight)
+
         if self.training: return arc_loss, rel_loss
-        pred_arc = pred_arc_.argmax(-1)
+
+        # pred_arc = pred_arc_.argmax(-1)
+        x['mask'][:, 0] = True
+        pred_arc = [MST_inference(p, l, m)[m][1:] for p, l, m in zip(
+            self.softmax(s_arc).cpu().numpy(),
+            lens.unsqueeze(1).cpu().numpy(),
+            x['mask'].cpu().numpy())]
+        pred_arc = torch.tensor(np.concatenate(pred_arc), dtype=torch.long, device=torch.device("cuda"))
         pred_rel = pred_rel_[n_token, pred_arc].argmax(-1)
         return arc_loss, rel_loss, pred_arc.tolist(), pred_rel.tolist()
-
-
-
-
