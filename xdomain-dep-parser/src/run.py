@@ -13,11 +13,11 @@ def get_available_gpu(phys_machs, req_mem):
     # Sort by free memory in descending order.
     gpu_available.sort(key=lambda x: -x[2])
     return iter(gpu_available)
-3
+
 def main():
 
     # List your physical machines.
-    phys_machs = ['64', ]
+    phys_machs = ['8014', '63']
     # List the memory you needed.
     req_mem = 10000
     gpu_available = get_available_gpu(phys_machs, req_mem)
@@ -25,14 +25,15 @@ def main():
     # List anaconda_env name on your machine
     mach_info = {
       '8020': {'conda': 'py3.7',     'code': '~/data/Github/xdomain-dep-parser'},
-      '8014': {'conda': 'py3.6',     'code': '~/data/xdomain-dep-parser'},
+      '8014': {'conda': 'py3.6',     'code': '~/data/Github/xdomain-dep-parser'},
+      '8037': {'conda': 'py36-pt18', 'code': '~/data_from_8014/Github/xdomain-dep-parser'},
       '63':   {'conda': 'py36-pt18', 'code': '~/data/xdomain-dep-parser'},
       '64':   {'conda': 'py36-pt17', 'code': '~/data/xdomain-dep-parser'},
     }
     default_cfg ='../cfgs/default.cfg'
     # List the CMD arguments to explore.
     argu_list = {
-        'DOMAIN': ['PB', ],
+        'DOMAIN': ['ZX', 'FIN',],  # 'PC', 'PB', 'ZX', 'FIN', 'LEG'
         # 'D_MODEL': ['400',],
         # 'LR_DECAY': ['0.8', '0.7'],
         # 'LR_ANNEAL': ['15000',],
@@ -40,12 +41,13 @@ def main():
         # 'XFMR_ATTN_DROP': ['0.4',],
         # 'XFMR_FFN_DROP': ['0.4',],
         # 'XFMR_RES_DROP': ['0.4',],
-        'N_WORKER': ['4',],
+        'MIN_PROB': ['0.0', ],
+        'D_CHAR': ['32',],
         # 'LR': ['0.0012',],
         # 'LR_DECAY': ['0.8',],
         # 'LR_WARM': ['800',],
         # 'LR_DOUBLE': ['20400',],
-        # 'N_BATCH': ['2',],
+        # 'N_EPOCH': ['1',],
         # 'DEBUG': [''],
     }
     argu_comb = list(itertools.product(*argu_list.values()))
@@ -58,7 +60,9 @@ def main():
         mach, gpu, _ = next(gpu_available)
         cmd_args = ' '.join([f'--{k} {v}'for k, v in argu.items()])
         cmd_args += f' --exp_name {ckpt_name} --CFG ../ckpts/{ckpt_name}/run.cfg'
-
+        # if mach == '8037':
+        #     cmd_run = f"rsync -avz -e 'ssh' ../ {'8014'}:{mach_info['8014']['code']}"
+        # else:
         cmd_run = f"rsync -avz -e 'ssh' ../ {mach}:{mach_info[mach]['code']}"
         res = os.system(cmd_run)
         print(f"rsync executed {'successfully' if res==0 else 'failed'}")
