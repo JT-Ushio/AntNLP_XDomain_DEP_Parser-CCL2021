@@ -51,8 +51,8 @@ def main():
 
     # Setup neptune mode="debug" run="CCL-9",
     if USE_NEPTUNE:
-        run = neptune.init(project='ushio/CCL2021', name=cfg.exp_name,
-                           tags=[cfg.DOMAIN, str(cfg.MIN_PROB), 'MST', 'giga100', 'CharLSTM', 'fix'])
+        run = neptune.init(project='ushio/CCL2021', name=cfg.exp_name, mode='debug',
+                           tags=[cfg.DOMAIN, str(cfg.MIN_PROB), 'MST', 'giga100', 'gnn'])
         run['parameters'] = vars(cfg)
 
     # Build data reader
@@ -76,9 +76,9 @@ def main():
     dev_set  = CoNLLUDataset(DEV,  data_reader, vocabulary)
 
     # Build the data-loader
-    train = DataLoader(train_set, cfg.N_BATCH, True,  None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0, )
-    dev   = DataLoader(dev_set,   cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0, )
-    train_ = DataLoader(train_set, cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0, )
+    train = DataLoader(train_set, cfg.N_BATCH, True,  None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
+    dev   = DataLoader(dev_set,   cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
+    train_ = DataLoader(train_set, cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
 
     # Build parser model
     parser = Parser(vocabulary, cfg)

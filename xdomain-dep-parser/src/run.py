@@ -17,7 +17,7 @@ def get_available_gpu(phys_machs, req_mem):
 def main():
 
     # List your physical machines.
-    phys_machs = ['8014', '63']
+    phys_machs = ['8014', ]
     # List the memory you needed.
     req_mem = 10000
     gpu_available = get_available_gpu(phys_machs, req_mem)
@@ -27,13 +27,14 @@ def main():
       '8020': {'conda': 'py3.7',     'code': '~/data/Github/xdomain-dep-parser'},
       '8014': {'conda': 'py3.6',     'code': '~/data/Github/xdomain-dep-parser'},
       '8037': {'conda': 'py36-pt18', 'code': '~/data_from_8014/Github/xdomain-dep-parser'},
+      '8017': {'conda': 'py36-pt18', 'code': '~/data_from_8014/Github/xdomain-dep-parser'},
       '63':   {'conda': 'py36-pt18', 'code': '~/data/xdomain-dep-parser'},
       '64':   {'conda': 'py36-pt17', 'code': '~/data/xdomain-dep-parser'},
     }
     default_cfg ='../cfgs/default.cfg'
     # List the CMD arguments to explore.
     argu_list = {
-        'DOMAIN': ['ZX', 'FIN',],  # 'PC', 'PB', 'ZX', 'FIN', 'LEG'
+        'DOMAIN': ['ZX',],  # 'PC', 'PB', 'ZX', 'FIN', 'LEG'
         # 'D_MODEL': ['400',],
         # 'LR_DECAY': ['0.8', '0.7'],
         # 'LR_ANNEAL': ['15000',],
@@ -41,8 +42,10 @@ def main():
         # 'XFMR_ATTN_DROP': ['0.4',],
         # 'XFMR_FFN_DROP': ['0.4',],
         # 'XFMR_RES_DROP': ['0.4',],
-        'MIN_PROB': ['0.0', ],
-        'D_CHAR': ['32',],
+        # 'MIN_PROB': ['0.5', ],
+        'D_CHAR': ['50',],
+        'D_TAG': ['50',],
+        'N_GNN_LAYER': ['1',],
         # 'LR': ['0.0012',],
         # 'LR_DECAY': ['0.8',],
         # 'LR_WARM': ['800',],

@@ -85,5 +85,7 @@ def conllu_fn(batch):
     res['head'] = torch.tensor(truth['head'], dtype=torch.long, device=device)
     res['rel'] = torch.tensor(truth['rel'], dtype=torch.long, device=device)
     res['mask'] = res['w_lookup'].ne(PAD)
+    res['mask_root'] = res['w_lookup'].ne(PAD)
+    res['mask_root'][:, 0] = False  # mask the ROOT token
     return res
 
