@@ -17,7 +17,7 @@ def get_available_gpu(phys_machs, req_mem):
 def main():
 
     # List your physical machines.
-    phys_machs = ['8014', ]
+    phys_machs = ['8017', ]
     # List the memory you needed.
     req_mem = 10000
     gpu_available = get_available_gpu(phys_machs, req_mem)
@@ -42,7 +42,8 @@ def main():
         # 'XFMR_ATTN_DROP': ['0.4',],
         # 'XFMR_FFN_DROP': ['0.4',],
         # 'XFMR_RES_DROP': ['0.4',],
-        # 'MIN_PROB': ['0.5', ],
+        'MIN_PROB': ['0.7',],
+        'D_MODEL': ['400',],
         'D_CHAR': ['50',],
         'D_TAG': ['50',],
         'N_GNN_LAYER': ['1',],

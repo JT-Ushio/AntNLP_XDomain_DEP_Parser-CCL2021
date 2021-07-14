@@ -51,8 +51,8 @@ def main():
 
     # Setup neptune mode="debug" run="CCL-9",
     if USE_NEPTUNE:
-        run = neptune.init(project='ushio/CCL2021', name=cfg.exp_name, mode='debug',
-                           tags=[cfg.DOMAIN, str(cfg.MIN_PROB), 'MST', 'giga100', 'gnn'])
+        run = neptune.init(project='ushio/CCL2021', name=cfg.exp_name,
+                           tags=[cfg.DOMAIN, str(cfg.MIN_PROB), 'MST', 'giga300', 'divstd'])
         run['parameters'] = vars(cfg)
 
     # Build data reader
@@ -82,7 +82,8 @@ def main():
 
     # Build parser model
     parser = Parser(vocabulary, cfg)
-    if torch.cuda.is_available(): parser = parser.cuda()
+    if torch.cuda.is_available():
+        parser = parser.cuda()
 
     # build optimizers
     parser.set_optimizer(cfg)
@@ -96,7 +97,6 @@ def main():
         parser.optim.load_state_dict(ckpt['optim'])
         parser.sched.load_state_dict(ckpt['sched'])
         return start_epoch, best_uas, best_las, best_epoch
-
 
     if cfg.IS_RESUME:
         start_epoch, best_uas, best_las, best_epoch = load_ckpt(cfg.LAST)

@@ -31,7 +31,7 @@ class Parser(nn.Module):
         _, v_glove = glove_reader(cfg.GLOVE)
         d_glove, n_glove = len(v_glove[1]), vocabulary.get_vocab_size('glove')
         v_glove = [[0.0]*d_glove, [0.0]*d_glove] + v_glove
-        v_glove = np.array(v_glove, dtype=np.float32) #/np.std(v_glove)
+        v_glove = np.array(v_glove, dtype=np.float32) / np.std(v_glove)
         PAD = vocabulary.get_padding_index('glove')
         self.glookup = nn.Embedding(n_glove, d_glove, padding_idx=PAD)
         self.glookup.weight.data.copy_(torch.from_numpy(v_glove))
