@@ -5,28 +5,25 @@ import torch.nn.functional as F
 
 class GraphAttentionLayer(nn.Module):
 
-	def __init__(self, d_in, d_out, p_drop, alpha):
+	def __init__(self, d_in: int, d_out: int, p_drop: float, alpha: float):
 		super(GraphAttentionLayer, self).__init__()
-		self.d_in, self.d_out, self.p_drop = d_in, d_out, p_drop
+		# self.d_in, self.d_out, self.p_drop = d_in, d_out, p_drop
 		self.alpha = alpha
-
-		self.attn = AddtiveAttention(self.d_in, self.d_out)
-		self.leaky_relu = nn.LeakyRelu(self.alpha)
+		self.W = nn.Parameter(torch.empty(d_in, d_out))
+		self.B = nn.Parameter(torch.empty(d_in, d_out))
+		self.activation = nn.LeakyReLU(negative_slope=alpha)
+		self.dropout = nn.Dropout(p=p_drop)
+		self.reset_parameters()
 
 	def reset_parameters(self):
 		gain = nn.init.calculate_gain('leaky_relu', self.alpha)
-		if isinstance(self.attn, 'AddtiveAttention'):
-			nn.init.xavier_uniform_(self.W, gain=gain)
-			nn.init.xavier_uniform_(self.a1, gain=gain)
-			nn.init.xavier_uniform_(self.a2, gain=gain)
-		elif isinstance(self.attn, 'DotProductAttention'):
-			nn.init.xavier_uniform_(self.W1, gain=gain)
-			nn.init.xavier_uniform_(self.W2, gain=gain)
+		nn.init.xavier_uniform_(self.W, gain=gain)
+		nn.init.xavier_uniform_(self.B, gain=gain)
 
-	def forward(self, h, adj):
-		h = self.attn(h)
-		
-		
+	def forward(self, H, D, A):
+		self_loop = torch.einsum('bij,jk->bik', H, self.B)
+		nbor_aggr = torch.einsum('bxi,bij,jk->bxk', A, D, self.W)
+		return self.dropout(self.activation(nbor_aggr+self_loop))
 
 
 class AddtiveAttention(nn.Module):

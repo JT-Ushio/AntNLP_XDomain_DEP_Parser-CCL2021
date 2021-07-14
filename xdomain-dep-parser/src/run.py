@@ -25,7 +25,8 @@ def main():
     # E.g., next(gpu_available) = ('8020', 0, 12196)
     # List anaconda_env name on your machine
     mach_info = {
-      '8020': {'conda': 'py3.7',     'code': '~/data/Github/xdomain-dep-parser'},
+      '8037': {'conda': 'py36-pt18', 'code': '~/data_from_8014/Github/xdomain-dep-parser'},
+      '8017': {'conda': 'py36-pt18', 'code': '~/data_from_8014/Github/xdomain-dep-parser'},
       '8014': {'conda': 'py3.6',     'code': '~/data/xdomain-dep-parser'},
       '63':   {'conda': 'py36-pt18', 'code': '~/data/xdomain-dep-parser'},
       '64':   {'conda': 'py36-pt17', 'code': '~/data/xdomain-dep-parser'},
@@ -34,16 +35,19 @@ def main():
     # List the CMD arguments to explore.
     argu_list = {
         # 'LR_DECAY': ['0.8', '0.7'],
-        # 'LR_ANNEAL': ['15000',],
-        # 'LR_DOUBLE': ['75400',],
-        'XFMR_ATTN_DROP': ['0.2',],
-        'XFMR_RES_DROP': ['0.2',],
-        'XFMR_FFN_DROP': ['0.2',],
+        'D_CHAR': ['50',],
+        'N_HEAD': ['8',],
+        'D_TAG': ['50',],
+        'D_CHARNN_HID': ['25',],
+        # 'N_BATCH': ['128',],
+        # 'XFMR_RES_DROP': ['0.2',],
+        # 'XFMR_ATTN_DROP': ['0.2',],
+        'N_GNN_LAYER': ['0', '1', '2',],
         # 'LR_DECAY': ['0.8',],
         # 'LR_WARM': ['800',],
         # 'LR_DOUBLE': ['20400',],
         # 'N_WORKER': [ '3', '4'],
-        'N_EPOCH': ['1501',],
+        # 'N_EPOCH': ['150',],
         # 'DEBUG': [''],
     }
     argu_comb = list(itertools.product(*argu_list.values()))
