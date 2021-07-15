@@ -3,7 +3,7 @@ from overrides import overrides
 import re, sys
 from collections import Counter
 from antu.io import Instance, DatasetReader
-from antu.io.fields import Field, TextField, IndexField, FloatField
+from antu.io.fields import Field, TextField, IndexField, FloatField, MetaField
 from antu.io.token_indexers import TokenIndexer, SingleIdTokenIndexer, CharTokenIndexer
 
 
@@ -67,6 +67,8 @@ class PTBReader(DatasetReader):
         fields = []
         if 'word' in self.field_list:
             fields.append(TextField('word', inputs[1], indexers['word']))
+            fields.append(MetaField('sentence', [''.join(inputs[1][1:])]))
+            fields.append(IndexField('word_len', [len(w) for w in inputs[1][1:]]))
         if 'tag' in self.field_list:
             fields.append(TextField('tag', inputs[3], indexers['tag']))
         if 'head' in self.field_list:

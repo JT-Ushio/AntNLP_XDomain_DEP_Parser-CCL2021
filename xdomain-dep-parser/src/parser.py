@@ -31,7 +31,7 @@ class Parser(nn.Module):
         _, v_glove = glove_reader(cfg.GLOVE)
         d_glove, n_glove = len(v_glove[1]), vocabulary.get_vocab_size('glove')
         v_glove = [[0.0]*d_glove, [0.0]*d_glove] + v_glove
-        v_glove = np.array(v_glove, dtype=np.float32) / np.std(v_glove)
+        v_glove = np.array(v_glove, dtype=np.float32) # / np.std(v_glove)
         PAD = vocabulary.get_padding_index('glove')
         self.glookup = nn.Embedding(n_glove, d_glove, padding_idx=PAD)
         self.glookup.weight.data.copy_(torch.from_numpy(v_glove))
@@ -126,6 +126,15 @@ class Parser(nn.Module):
         return pred_rel, rel_loss
 
     def forward(self, x):
+        print(x['sentence'])
+        print(x['word_len'])
+        print(x['word_len'].cumsum())
+        from transformers import XLMRobertaTokenizerFast
+        tokenizer = XLMRobertaTokenizerFast.from_pretrained("xlm-roberta-base")
+        wuhu = tokenizer(x['sentence'], return_offsets_mapping=True, padding=True)
+        print(wuhu['attention_mask'])
+        print(wuhu['offset_mapping'])
+        sys.exit()
         max_len, lens = x['w_lookup'].size(1), x['mask'].sum(dim=1)
 
         # Embedding Layer

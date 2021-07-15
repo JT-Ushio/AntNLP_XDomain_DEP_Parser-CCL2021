@@ -42,17 +42,16 @@ def main():
         # 'XFMR_ATTN_DROP': ['0.4',],
         # 'XFMR_FFN_DROP': ['0.4',],
         # 'XFMR_RES_DROP': ['0.4',],
-        'MIN_PROB': ['0.7',],
-        'D_MODEL': ['400',],
+        'MIN_PROB': ['0.95',],
         'D_CHAR': ['50',],
         'D_TAG': ['50',],
-        'N_GNN_LAYER': ['1',],
+        'N_GNN_LAYER': ['0',],
         # 'LR': ['0.0012',],
         # 'LR_DECAY': ['0.8',],
         # 'LR_WARM': ['800',],
         # 'LR_DOUBLE': ['20400',],
         # 'N_EPOCH': ['1',],
-        # 'DEBUG': [''],
+        'DEBUG': [''],
     }
     argu_comb = list(itertools.product(*argu_list.values()))
 

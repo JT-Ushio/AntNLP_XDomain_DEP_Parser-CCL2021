@@ -51,8 +51,8 @@ def main():
 
     # Setup neptune mode="debug" run="CCL-9",
     if USE_NEPTUNE:
-        run = neptune.init(project='ushio/CCL2021', name=cfg.exp_name,
-                           tags=[cfg.DOMAIN, str(cfg.MIN_PROB), 'MST', 'giga300', 'divstd'])
+        run = neptune.init(project='ushio/CCL2021', name=cfg.exp_name, mode='debug',
+                           tags=[cfg.DOMAIN, str(cfg.MIN_PROB), 'MST', 'giga100'])
         run['parameters'] = vars(cfg)
 
     # Build data reader

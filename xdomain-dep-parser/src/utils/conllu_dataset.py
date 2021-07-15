@@ -44,10 +44,12 @@ def conllu_fn(batch):
     pad_tok_seq, zero_pad_seq = [PAD]*max_len, [0]*max_len
     pad_char_seq = [PAD]*max_char_len
     truth = {'head': [], 'rel': []}
-    inputs = {'word': [], 'glove': [], 'tag': [], 'prob': [], 'char': [], 'word2char': []}
+    inputs = {'word': [], 'glove': [], 'tag': [], 'prob': [], 'char': [], 'word2char': [], 'sentence': [], 'word_len': []}
     word_dict = {PAD: 0}
     tmp = []
     for ins in batch:
+        inputs['sentence'].extend(ins['sentence'])
+        inputs['word_len'].append(ins['word_len'])
         pad_len = max_len-len(ins['head'])
         # PAD word
         inputs['word'].append(ins['word']['word']+pad_tok_seq[:pad_len])
@@ -72,7 +74,6 @@ def conllu_fn(batch):
             char_ids.append(word_dict[word])
         inputs['word2char'].append(char_ids+zero_pad_seq[:pad_len])
 
-
     device = torch.device("cuda" if not get_worker_info() and torch.cuda.is_available() else "cpu")
     res = {}
     res['w_lookup'] = torch.tensor(inputs['word'], dtype=torch.long, device=device)
@@ -87,5 +88,7 @@ def conllu_fn(batch):
     res['mask'] = res['w_lookup'].ne(PAD)
     res['mask_root'] = res['w_lookup'].ne(PAD)
     res['mask_root'][:, 0] = False  # mask the ROOT token
+    res['sentence'] = inputs['sentence']
+    res['word_len'] = inputs['word_len']
     return res
 
