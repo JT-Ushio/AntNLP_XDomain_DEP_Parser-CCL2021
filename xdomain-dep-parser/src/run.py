@@ -17,7 +17,7 @@ def get_available_gpu(phys_machs, req_mem):
 def main():
 
     # List your physical machines.
-    phys_machs = ['8017', ]
+    phys_machs = ['64', ]
     # List the memory you needed.
     req_mem = 10000
     gpu_available = get_available_gpu(phys_machs, req_mem)
@@ -34,24 +34,24 @@ def main():
     default_cfg ='../cfgs/default.cfg'
     # List the CMD arguments to explore.
     argu_list = {
-        'DOMAIN': ['ZX',],  # 'PC', 'PB', 'ZX', 'FIN', 'LEG'
+        'DOMAIN': ['PB',],  # 'PC', 'PB', 'ZX', 'FIN', 'LEG'
         # 'D_MODEL': ['400',],
         # 'LR_DECAY': ['0.8', '0.7'],
         # 'LR_ANNEAL': ['15000',],
         # 'LR_DOUBLE': ['75400',],
         # 'XFMR_ATTN_DROP': ['0.4',],
         # 'XFMR_FFN_DROP': ['0.4',],
-        # 'XFMR_RES_DROP': ['0.4',],
-        'MIN_PROB': ['0.95',],
+        'XFMR_RES_DROP': ['0.3',],
+        'MIN_PROB': ['0.9', ], #
         'D_CHAR': ['50',],
-        'D_TAG': ['50',],
+        # 'D_TAG': ['50',],
         'N_GNN_LAYER': ['0',],
         # 'LR': ['0.0012',],
         # 'LR_DECAY': ['0.8',],
         # 'LR_WARM': ['800',],
         # 'LR_DOUBLE': ['20400',],
         # 'N_EPOCH': ['1',],
-        'DEBUG': [''],
+        # 'DEBUG': [''],
     }
     argu_comb = list(itertools.product(*argu_list.values()))
 
@@ -63,9 +63,6 @@ def main():
         mach, gpu, _ = next(gpu_available)
         cmd_args = ' '.join([f'--{k} {v}'for k, v in argu.items()])
         cmd_args += f' --exp_name {ckpt_name} --CFG ../ckpts/{ckpt_name}/run.cfg'
-        # if mach == '8037':
-        #     cmd_run = f"rsync -avz -e 'ssh' ../ {'8014'}:{mach_info['8014']['code']}"
-        # else:
         cmd_run = f"rsync -avz -e 'ssh' ../ {mach}:{mach_info[mach]['code']}"
         res = os.system(cmd_run)
         print(f"rsync executed {'successfully' if res==0 else 'failed'}")

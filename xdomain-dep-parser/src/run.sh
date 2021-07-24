@@ -27,8 +27,8 @@ exper_cfg="${ckpt_dir}/run.cfg"
 screen -r $exper_name -X stuff "cp $default_cfg $exper_cfg \n"
 
 # run training scripts
-echo "CUDA_VISIBLE_DEVICES=$gpu_id python train.py $argu_list \n"
+echo "CUDA_VISIBLE_DEVICES=$gpu_id python tri-train.py $argu_list \n"
 
-screen -r $exper_name -X stuff "CUDA_VISIBLE_DEVICES=$gpu_id python train.py $argu_list \n"
+screen -r $exper_name -X stuff "CUDA_VISIBLE_DEVICES=$gpu_id python tri-train.py $argu_list \n"
 
 echo 'cmd finish!'

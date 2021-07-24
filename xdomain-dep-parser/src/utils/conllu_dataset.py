@@ -48,9 +48,9 @@ def conllu_fn(batch):
     word_dict = {PAD: 0}
     tmp = []
     for ins in batch:
-        inputs['sentence'].extend(ins['sentence'])
-        inputs['word_len'].append(ins['word_len'])
         pad_len = max_len-len(ins['head'])
+        inputs['sentence'].extend(ins['sentence'])
+        inputs['word_len'].append(np.cumsum(ins['word_len']).tolist()+zero_pad_seq[:pad_len])
         # PAD word
         inputs['word'].append(ins['word']['word']+pad_tok_seq[:pad_len])
         tmp.extend(ins['word']['word'])
@@ -60,11 +60,13 @@ def conllu_fn(batch):
         # PAD tag
         inputs['tag'].append(ins['tag']['tag']+pad_tok_seq[:pad_len])
         # PAD head
-        truth['head'].extend(ins['head']+zero_pad_seq[:pad_len])
+        # truth['head'].extend(ins['head']+zero_pad_seq[:pad_len])
+        truth['head'].extend(ins['head'][1:])
         # PAD prob
         inputs['prob'].extend(ins['prob'][1:])
         # PAD rel
-        truth['rel'].extend(ins['rel']['rel']+zero_pad_seq[:pad_len])
+        # truth['rel'].extend(ins['rel']['rel']+zero_pad_seq[:pad_len])
+        truth['rel'].extend(ins['rel']['rel'][1:])
         # PAD char
         char_ids = []
         for word, char in zip(ins['word']['word'], ins['word']['char']):
@@ -81,7 +83,6 @@ def conllu_fn(batch):
     res['t_lookup'] = torch.tensor(inputs['tag'], dtype=torch.long, device=device)
     res['c_lookup'] = torch.tensor(inputs['char'], dtype=torch.long, device=device)
     res['w2c'] = torch.tensor(inputs['word2char'], dtype=torch.long, device=device)
-    # print(res['c_lookup'].size(), res['t_lookup'].size(), res['w2c'].size())
     res['prob'] = torch.tensor(inputs['prob'], dtype=torch.float, device=device)
     res['head'] = torch.tensor(truth['head'], dtype=torch.long, device=device)
     res['rel'] = torch.tensor(truth['rel'], dtype=torch.long, device=device)

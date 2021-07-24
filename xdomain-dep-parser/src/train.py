@@ -51,8 +51,8 @@ def main():
 
     # Setup neptune mode="debug" run="CCL-9",
     if USE_NEPTUNE:
-        run = neptune.init(project='ushio/CCL2021', name=cfg.exp_name, mode='debug',
-                           tags=[cfg.DOMAIN, str(cfg.MIN_PROB), 'MST', 'giga100'])
+        run = neptune.init(project='ushio/CCL2021', name=cfg.exp_name,  mode='debug', # run='CCL-262', # mode='debug',
+                           tags=[cfg.DOMAIN, str(cfg.MIN_PROB), 'MST', 'giga100', 'drop0.3', ])  # 'd A.T()'
         run['parameters'] = vars(cfg)
 
     # Build data reader
@@ -74,19 +74,25 @@ def main():
         TRAIN, data_reader, vocabulary, counters, {'word': cfg.MIN_COUNT},
         no_pad_namespace={'rel'}, no_unk_namespace={'rel'})
     dev_set  = CoNLLUDataset(DEV,  data_reader, vocabulary)
+    test_set  = CoNLLUDataset(TEST,  data_reader, vocabulary)
+
 
     # Build the data-loader
     train = DataLoader(train_set, cfg.N_BATCH, True,  None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
     dev   = DataLoader(dev_set,   cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
     train_ = DataLoader(train_set, cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
+    test   = DataLoader(test_set,   cfg.N_BATCH, False, None, None, cfg.N_WORKER, conllu_fn, cfg.N_WORKER>0)
 
     # Build parser model
     parser = Parser(vocabulary, cfg)
     if torch.cuda.is_available():
         parser = parser.cuda()
 
+
+
     # build optimizers
     parser.set_optimizer(cfg)
+    # parser.set_bert()
     # load checkpoint if wanted
     start_epoch = best_uas = best_las = best_epoch = 0
     def load_ckpt(ckpt_path: str):
@@ -116,6 +122,14 @@ def main():
         uas, las = ptb_evaluation(vocabulary, pred, pred_path, gold_path)
         return float(np.mean(arc_losses)), float(np.mean(rel_losses)), uas, las
 
+    load_ckpt(cfg.BEST)
+    parser.eval()
+    _, _, uas, las = validation(dev, cfg.PRED_DEV, DEV)
+    print(uas, las)
+    _, _, uas, las = validation(test, cfg.PRED_TEST, TEST)
+    print(uas, las)
+    sys.exit()
+
     # Train model
     for epoch in range(start_epoch, cfg.N_EPOCH):
         parser.train()
@@ -123,7 +137,8 @@ def main():
         for n_iter, data in enumerate(train):
             if cfg.N_WORKER:
                 for x in data.keys(): data[x]=data[x].cuda(non_blocking=True)
-            arc_loss, rel_loss = parser(data)
+            arc_loss1, rel_loss1 = parser(data, first_run=True)
+            arc_loss, rel_loss = parser(data, second_run=True)
             arc_losses.append(arc_loss.item())
             rel_losses.append(rel_loss.item())
             ((arc_loss+rel_loss)/cfg.STEP_UPDATE).backward()

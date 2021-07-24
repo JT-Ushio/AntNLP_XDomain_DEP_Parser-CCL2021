@@ -69,8 +69,8 @@ class ExternalAttention(nn.Module):
         if max_dist>0:
             self.rel_k = nn.Embedding(max_dist*2+1, self.d_k//n_heads)
             self.rel_v = nn.Embedding(max_dist*2+1, self.d_v//n_heads)
-            dist_x = torch.arange(0, 200).unsqueeze(0)
-            dist_y = torch.arange(0, 200).unsqueeze(1)
+            dist_x = torch.arange(0, 300).unsqueeze(0)
+            dist_y = torch.arange(0, 300).unsqueeze(1)
             rel_dist = dist_x - dist_y
             if not use_neg_dist:
                 rel_dist = torch.abs(rel_dist)
@@ -288,8 +288,8 @@ class MultiheadAttention(nn.Module):
         if max_dist>0:
             self.rel_k = nn.Embedding(max_dist*2+1, self.d_k//n_heads)
             self.rel_v = nn.Embedding(max_dist*2+1, self.d_v//n_heads)
-            dist_x = torch.arange(0, 200).unsqueeze(0)
-            dist_y = torch.arange(0, 200).unsqueeze(1)
+            dist_x = torch.arange(0, 300).unsqueeze(0)
+            dist_y = torch.arange(0, 300).unsqueeze(1)
             rel_dist = dist_x - dist_y
             if not use_neg_dist:
                 rel_dist = torch.abs(rel_dist)
@@ -659,7 +659,19 @@ class LearnedPositionEncoding(nn.Embedding):
     def forward(self, x):
         weight = self.weight.data.unsqueeze(1)
         if self.is_add:
-            x += weight[:x.size(0),:]
+            if x.size(0) <= 100:
+                x += weight[:x.size(0),:]
+            else:
+                d_pe = weight.size(2)
+                long_pos = torch.empty((x.size(0)-100, d_pe), device='cuda')
+                nn.init.zeros_(long_pos)
+                position = torch.arange(100, x.size(0), dtype=torch.float).unsqueeze(1)
+                div_term = torch.exp(torch.arange(0, d_pe, 2).float() * (-math.log(10000.0)/d_pe))
+                long_pos[:, 0::2] = torch.sin(position * div_term)
+                long_pos[:, 1::2] = torch.cos(position * div_term)
+                long_pos = long_pos.unsqueeze(1)
+                pos_x = torch.cat((weight[:100,:], long_pos), dim=0)
+                x += pos_x
         else:
             p_emb = weight[:x.size(0),:].expand(-1, x.size(1), -1)
             x = torch.cat((x, p_emb), dim=-1)
